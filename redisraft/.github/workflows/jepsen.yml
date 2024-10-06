@@ -1,0 +1,33 @@
+name: Jepsen
+
+on:
+  schedule:
+    - cron: '0 0 * * *'
+
+jobs:
+  jepsen:
+    runs-on: ubuntu-20.04
+    if: github.repository == 'redislabs/redisraft'
+    steps:
+    - uses: actions/checkout@v1
+    - name: Install ripgrep
+      run: sudo apt-get install ripgrep
+    - name: Get revision
+      id: vars
+      run: echo "::set-output name=git_sha::$(git rev-parse --short HEAD)"
+    - name: Build containers
+      run: cd jepsen/docker && ./genkeys.sh && docker-compose build
+    - name: Start containers
+      run: cd jepsen/docker && docker-compose up -d
+    - name: Run test
+      run: |
+          docker exec -w /jepsen jepsen-control \
+              lein run test-all \
+                  --ssh-private-key /root/.ssh/id_rsa \
+                  --follower-proxy \
+                  --time-limit 600 \
+                  --test-count 20 \
+                  --concurrency 4n \
+                  --nemesis kill,pause,partition,member \
+                  --redis-version 6.2.2 \
+                  --raft-version ${{ steps.vars.outputs.git_sha }} | rg --passthrough 'Everything looks good'

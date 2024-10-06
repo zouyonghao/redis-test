@@ -1,0 +1,11 @@
+*.o
+*.gcno
+*~
+libcraft.so
+libcraft.a
+CLinkedListQueue/
+.env/
+.hypothesis/
+**/__pycache__
+libraft.so
+libraft.a
